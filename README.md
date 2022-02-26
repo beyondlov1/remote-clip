@@ -5,3 +5,8 @@
 gcc server.c -lpthread -o server
 gcc client.c -lX11 -lpthread -o client
 ```
+
+
+### 参考
+https://github.com/exebook/x11clipboard.git
+https://github.com/astrand/xclip.git
