@@ -1,0 +1,135 @@
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/prctl.h>
+
+static int server_sock;
+static int client_sock;
+
+static int running;
+
+void sigint_handler(int sig)
+{
+    if (sig == SIGINT)
+    {
+        // shutdown(client_sock, SHUT_RDWR);
+        close(client_sock);
+        // shutdown(server_sock, SHUT_RDWR);
+        close(server_sock);
+        printf("shutdown %d", client_sock);
+        running = 0;
+    }
+}
+
+struct snode
+{
+    int sock;
+    struct snode *pre;
+    struct snode *next;
+};
+
+int sadd(struct snode *root, struct snode *target){
+    
+    if (root->next == NULL)
+    {
+        root->next = target;
+        target -> pre = root;
+    }else
+    {
+        sadd(root->next, target);
+    }
+    return 0;
+}
+
+int sremove(struct snode *target){
+    if (target->pre == NULL)
+    {
+        free(target);
+        return 0;
+    }
+    
+    target->pre = target->next;
+    free(target);
+}
+
+static struct snode *root;
+
+int main(int argc, char const *argv[])
+{
+
+    running = 1;
+
+    setbuf(stdout, NULL);
+
+    server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    struct sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(8099);
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    listen(server_sock, 100);
+
+    signal(SIGINT, sigint_handler);
+
+
+    struct sockaddr_in client_addr;
+    socklen_t client_addr_size = sizeof(client_addr);
+    client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &client_addr_size);
+
+    struct snode node;
+    memset(&node, 0, sizeof(node));
+    node.sock = client_sock;
+
+    if (root == NULL)
+    {
+        root = &node;
+    }else{
+        sadd(root, &node);
+    }
+
+    pid_t fpid = fork();
+    if (fpid < 0)
+    {
+        return EXIT_FAILURE;
+    }else if (fpid == 0)
+    {
+        prctl(PR_SET_PDEATHSIG,SIGKILL);
+        while (1)
+        {
+            char buff[1000];
+            int rec_count = read(client_sock, buff, sizeof(buff) - 1);
+            if (rec_count <= 0)
+            {
+                break;
+            }
+        
+            printf("%d", (int)strnlen(buff, 1000));
+            printf("%s", buff);
+        }
+    }else{
+        while (1)
+        {
+            char str[10];
+            scanf("%s", str);
+            write(client_sock, str, sizeof(str));
+            printf("wrote");
+            if (!running)
+            {
+                break;
+            }
+            
+        }
+    }
+    
+  
+
+    // 广播
+    
+    return 0;
+}
+
