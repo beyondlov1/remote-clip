@@ -13,8 +13,9 @@
 
 #define CLIP_LEN 1000
 
-static char *shared_clip;
+static char *shared_clip = "";
 static int client_sock;
+static int received;
 
 
 static int running;
@@ -128,6 +129,17 @@ static void XCopy(Atom selection, unsigned char *text, int size)
     }
 }
 
+void *XCopyDaemon(){
+    while (1)
+    {
+        if (received)
+        {
+            XCopy(selection, NULL, 0);
+        }
+        sleep(1);
+    }
+}
+
 // copy end
 
 void *listen_remote(void *argv){
@@ -142,8 +154,7 @@ void *listen_remote(void *argv){
        
        shared_clip = buff;
        printf("%s", shared_clip);
-
-       XCopy(selection, (unsigned char *)buff, strlen(buff));
+       received = 1;
    }
 }
 
@@ -219,11 +230,14 @@ int main(int argc, char const *argv[])
     // 多线程
     // 线程1 监听sock, 写入公共变量
     // 线程2 监听剪切板, 发送到远程
-    pthread_t lthread;
-    pthread_t cthread;
 
+    pthread_t copyThread;
+    pthread_create(&copyThread, NULL, XCopyDaemon, NULL);
+
+    pthread_t lthread;
     pthread_create(&lthread, NULL, listen_remote, NULL);
 
+    pthread_t cthread;
     pthread_create(&cthread, NULL, listen_local_clip, NULL);
 
     while (1){
