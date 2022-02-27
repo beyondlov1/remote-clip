@@ -63,6 +63,7 @@ int sremove(struct snode *target){
     }
     
     target->pre->next = target->next;
+    target->next->pre = target->pre;
     free(target);
     return 0;
 }
