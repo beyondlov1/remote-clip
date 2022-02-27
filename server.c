@@ -50,21 +50,11 @@ int sadd(struct snode *root, struct snode *target){
 }
 
 int sremove(struct snode *target){
-    if (target == NULL)
-    {
-        return 0;
-    }
-    
-    if (target->pre == NULL)
-    {
-        free(target);
-        target = NULL;
-        return 0;
-    }
-    
     target->pre->next = target->next;
-    target->next->pre = target->pre;
-    free(target);
+    if (target->next != NULL)
+    {
+        target->next->pre = target->pre;
+    }
     return 0;
 }
 
@@ -75,7 +65,7 @@ void *handle_connection(void *argv){
     while (1)
     {
         char buff[MAX_REV_LEN];
-        int rec_count = read(client_sock, buff, sizeof(buff) - 1);
+        int rec_count = read(client_sock, buff, sizeof(buff) );
         if (rec_count <= 0)
         {
             break;
@@ -97,26 +87,38 @@ void *handle_connection(void *argv){
     }
     close(node->sock);
     sremove(node);
-    
+    printf("closed: %d", node->sock);
 }
 
 int main(int argc, char const *argv[])
 {
 
     running = 1;
-
     setbuf(stdout, NULL);
+
+    int port  = 8099;
+    if (argc > 1)
+    {
+        const char *port_s = argv[1];
+        printf("%s", port_s);
+        port = atoi(port_s);    
+    }
+    printf("port: %d", port);
 
     server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(8099);
+    server_addr.sin_port = htons(port);
     server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
     listen(server_sock, 100);
 
     signal(SIGINT, sigint_handler);
+
+    struct snode node;
+    memset(&node, 0, sizeof(node));
+    root = &node;
 
     while (1)
     {
@@ -129,18 +131,13 @@ int main(int argc, char const *argv[])
             break;
         }
 
+        printf("connected: %d", client_sock);
+
         struct snode node;
         memset(&node, 0, sizeof(node));
         node.sock = client_sock;
 
-        if (root == NULL)
-        {
-            root = &node;
-        }
-        else
-        {
-            sadd(root, &node);
-        }
+        sadd(root, &node);
 
         pthread_t t;
         pthread_create(&t, NULL, handle_connection, &node);

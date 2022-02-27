@@ -171,8 +171,20 @@ void *listen_local_clip(void *argv){
 int main(int argc, char const *argv[])
 {
     running = 1;
-
     setbuf(stdout, NULL);
+
+    const char *host = "127.0.0.1";
+    int port = 8099;
+    if (argc == 2)
+    {
+        host = argv[1];
+    }
+    if (argc == 3)
+    {
+        host = argv[1];
+        const char *port_s = argv[2];
+        port = atoi(port_s);
+    }
 
     display = XOpenDisplay(0);
     int N = DefaultScreen(display);
@@ -189,9 +201,9 @@ int main(int argc, char const *argv[])
     client_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server_addr.sin_addr.s_addr = inet_addr(host);
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(8099);
+    server_addr.sin_port = htons(port);
     connect(client_sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
 
     signal(SIGINT, sigint_handler);
