@@ -134,6 +134,7 @@ void *XCopyDaemon(){
     {
         if (received)
         {
+            received = 0;
             XCopy(selection, NULL, 0);
         }
         sleep(1);
