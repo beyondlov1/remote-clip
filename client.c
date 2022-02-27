@@ -133,7 +133,7 @@ void *listen_remote(void *argv){
    while (1)
    {
        char buff[CLIP_LEN];
-       int rec_count = read(client_sock, buff, sizeof(buff) - 1);
+       int rec_count = read(client_sock, buff, sizeof(buff));
        if (rec_count <= 0)
        {
            break;

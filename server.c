@@ -65,17 +65,17 @@ void *handle_connection(void *argv){
     while (1)
     {
         char buff[MAX_REV_LEN];
-        int rec_count = read(client_sock, buff, sizeof(buff) );
+        int rec_count = read(client_sock, buff, sizeof(buff));
         if (rec_count <= 0)
         {
             break;
         }
 
-        printf("%d", (int)strnlen(buff, MAX_REV_LEN));
-        printf("%s", buff);
+        printf("%d\n", (int)strnlen(buff, MAX_REV_LEN));
+        printf("%s\n", buff);
 
         // 广播
-        struct snode *last = root;
+        struct snode *last = root->next;
         while (last != NULL)
         {
             if (last != node)
@@ -116,6 +116,7 @@ int main(int argc, char const *argv[])
 
     signal(SIGINT, sigint_handler);
 
+    // 分配在常量区?
     struct snode node;
     memset(&node, 0, sizeof(node));
     root = &node;
@@ -133,6 +134,7 @@ int main(int argc, char const *argv[])
 
         printf("connected: %d", client_sock);
 
+        // 分配在栈上?
         struct snode node;
         memset(&node, 0, sizeof(node));
         node.sock = client_sock;
