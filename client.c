@@ -114,9 +114,9 @@ static void XCopy(Atom selection, unsigned char *text, int size)
                 R = XChangeProperty(ev.display, ev.requestor, ev.property, XA_ATOM, 32,
                                     PropModeReplace, (unsigned char *)&UTF8, 1);
             else if (ev.target == XA_STRING || ev.target == text_atom)
-                R = XChangeProperty(ev.display, ev.requestor, ev.property, XA_STRING, 8, PropModeReplace, text, sizeof(text));
+                R = XChangeProperty(ev.display, ev.requestor, ev.property, XA_STRING, 8, PropModeReplace, shared_clip, strlen(shared_clip));
             else if (ev.target == UTF8)
-                R = XChangeProperty(ev.display, ev.requestor, ev.property, UTF8, 8, PropModeReplace, text, sizeof(text));
+                R = XChangeProperty(ev.display, ev.requestor, ev.property, UTF8, 8, PropModeReplace, shared_clip, strlen(shared_clip));
             else
                 ev.property = None;
             if ((R & 2) == 0)
