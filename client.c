@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <X11/Xlib.h>
 #include <signal.h>
+#include <errno.h>
 
 #define CLIP_LEN 1000
 
@@ -164,7 +165,12 @@ void *listen_local_clip(void *argv){
             continue;
         }
         shared_clip = local_clip;
-        write(client_sock, local_clip, strnlen(local_clip, CLIP_LEN) + 1);
+        int cnt = write(client_sock, local_clip, strnlen(local_clip, CLIP_LEN) + 1);
+        if (cnt < 0)
+        {    
+            printf("errno:%d, error:%s", errno, strerror(errno));
+        }
+        
     }
 }
 
@@ -204,7 +210,9 @@ int main(int argc, char const *argv[])
     server_addr.sin_addr.s_addr = inet_addr(host);
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
-    connect(client_sock, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    if(connect(client_sock, (struct sockaddr *)&server_addr, sizeof(server_addr))<0){
+        printf("errno:%d, error:%s", errno, strerror(errno));
+    }
 
     signal(SIGINT, sigint_handler);
     
