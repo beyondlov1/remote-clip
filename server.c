@@ -26,11 +26,12 @@ void sigint_handler(int sig)
     if (sig == SIGINT)
     {
         running = 0;
-        struct snode *last = root;
+        struct snode *last = root->next;
         while (last != NULL)
         {
             close(last->sock);
             last = last->next;
+            free(last);
         }
         close(server_sock);
         printf("shutdown");
@@ -81,6 +82,7 @@ void *handle_connection(void *argv){
             if (last != node)
             {
                 write(last->sock, buff, sizeof(buff));
+                printf("broadcast to %d\n", last->sock);
             }
             last = last->next;
         }
@@ -88,6 +90,7 @@ void *handle_connection(void *argv){
     close(node->sock);
     sremove(node);
     printf("closed: %d", node->sock);
+    free(node);
 }
 
 int main(int argc, char const *argv[])
@@ -134,15 +137,15 @@ int main(int argc, char const *argv[])
 
         printf("connected: %d", client_sock);
 
-        // 分配在栈上?
-        struct snode node;
-        memset(&node, 0, sizeof(node));
-        node.sock = client_sock;
+        // 这里要自己分配内存, 分配到堆上,  如果只声明, 则所有的都会是同一个地址
+        struct snode *node = (struct snode *)malloc(sizeof(struct snode));
+        memset(node, 0, sizeof(node));
+        node->sock = client_sock;
 
-        sadd(root, &node);
+        sadd(root, node);
 
         pthread_t t;
-        pthread_create(&t, NULL, handle_connection, &node);
+        pthread_create(&t, NULL, handle_connection, node);
         
     }
 
