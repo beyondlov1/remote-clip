@@ -215,6 +215,7 @@ int main(int argc, char const *argv[])
     display2 = XOpenDisplay(0);
     int N2 = DefaultScreen(display2);
     window2 = XCreateSimpleWindow(display2, RootWindow(display2, N2), 0, 0, 1, 1, 0, BlackPixel(display, N2), WhitePixel(display2, N2));
+    UTF82 = XInternAtom(display, "UTF8_STRING", 1);
 
     client_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     struct sockaddr_in server_addr;
