@@ -72,8 +72,8 @@ void *handle_connection(void *argv){
             break;
         }
 
-        printf("%d\n", (int)strnlen(buff, MAX_REV_LEN));
-        printf("%s\n", buff);
+        printf("%d\n", (int)strnlen(buff+8, MAX_REV_LEN));
+        printf("%s\n", buff+8);
 
         // 广播
         struct snode *last = root->next;
@@ -81,7 +81,7 @@ void *handle_connection(void *argv){
         {
             if (last != node)
             {
-                write(last->sock, buff, sizeof(buff));
+                write(last->sock, buff, rec_count);
                 printf("broadcast to %d\n", last->sock);
             }
             last = last->next;

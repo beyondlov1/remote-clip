@@ -11,9 +11,12 @@
 #include <signal.h>
 #include <errno.h>
 
-#define CLIP_LEN 1000
+#define BUFF_LEN 1024
+#define MAX_SIZE 1024000 /* 1000k */
+#define HEAD_LEN 8
 
 static char *shared_clip = "";
+static int shared_size = 0;
 static int client_sock;
 static int received;
 
@@ -37,8 +40,15 @@ static Display *display2;
 static Window window2;
 static Atom UTF82, XA_STRING2 = 31;
 
-char *XPasteType(Atom atom)
+struct clip_data
 {
+    size_t size;
+    char *data;   
+};
+
+struct clip_data XPasteType(Atom atom)
+{
+    struct clip_data result;
     XEvent event;
     int format;
     unsigned long N, size;
@@ -65,22 +75,20 @@ char *XPasteType(Atom atom)
             {
                 s = strndup(data, size);
                 XFree(data);
+            }else{
+                s = malloc(size);
+                memset(s,0,size);
+                memcpy(s,data, size);
+                XFree(data);
             }
             XDeleteProperty(event.xselection.display, event.xselection.requestor, event.xselection.property);
         }
     }
-    return s;
+    result.data = s;
+    result.size = size;
+    return result;
 }
 
-char *XPaste()
-{
-    char *c = 0;
-    if (UTF82 != None)
-        c = XPasteType(UTF82);
-    if (!c)
-        c = XPasteType(XA_STRING2);
-    return c;
-}
 
 // paste end
 
@@ -88,7 +96,7 @@ char *XPaste()
 // copy
 static Display *display;
 static Window window;
-static Atom targets_atom, text_atom, UTF8, XA_ATOM = 4, XA_STRING = 31;
+static Atom targets_atom, text_atom, UTF8, XA_ATOM = 4, XA_STRING = 31, PNG;
 static Atom selection;
 
 static void XCopy(Atom selection, unsigned char *text, int size)
@@ -118,12 +126,20 @@ static void XCopy(Atom selection, unsigned char *text, int size)
                 R = XChangeProperty(ev.display, ev.requestor, ev.property, XA_STRING, 8, PropModeReplace, shared_clip, strlen(shared_clip));
             else if (ev.target == UTF8)
                 R = XChangeProperty(ev.display, ev.requestor, ev.property, UTF8, 8, PropModeReplace, shared_clip, strlen(shared_clip));
+            else if (ev.target == PNG)
+                R = XChangeProperty(ev.display, ev.requestor, ev.property, ev.target, 8, PropModeReplace, shared_clip, shared_size);
             else
                 ev.property = None;
             if ((R & 2) == 0)
                 XSendEvent(display, ev.requestor, 0, 0, (XEvent *)&ev);
             break;
         case SelectionClear:
+            if (shared_clip != NULL && *shared_clip != 0)
+            {
+                free(shared_clip);    
+            }
+            shared_clip = "";
+            shared_size = 0;
             return;
         }
     }
@@ -146,14 +162,45 @@ void *XCopyDaemon(){
 void *listen_remote(void *argv){
    while (1)
    {
-       char buff[CLIP_LEN];
-       int rec_count = read(client_sock, buff, sizeof(buff));
-       if (rec_count <= 0)
+       unsigned char head[HEAD_LEN];
+       int head_rec_count;
+       int rest = HEAD_LEN;
+       while (rest > 0 && (head_rec_count = read(client_sock, head, rest)) > 0)
        {
-           break;
+           rest -= head_rec_count;
+       }
+       unsigned long data_size = 0;
+       for (size_t i = 0; i < HEAD_LEN; i++)
+       {
+           data_size = data_size << 8 | (unsigned long) head[i];
+       }
+
+       shared_clip = malloc(data_size);
+       memset(shared_clip, 0, data_size);
+       int offset = 0;
+       while (1)
+       {
+           char buff[BUFF_LEN];
+           int rec_count = read(client_sock, buff, sizeof(buff));
+           if (rec_count < 0)
+           {
+               printf("errno:%d, error:%s", errno, strerror(errno));
+               break;
+           }
+           if (rec_count == 0){
+               printf("socket closed\n");
+               break;
+           }
+           if (offset >= data_size-1)
+           {
+               printf("trans over\n");
+               break;
+           }
+           memcpy(shared_clip+offset, buff, rec_count);
+           offset += rec_count;
        }
        
-       shared_clip = buff;
+       shared_size = offset;
        printf("%s", shared_clip);
        received = 1;
    }
@@ -162,22 +209,34 @@ void *listen_remote(void *argv){
 void *listen_local_clip(void *argv){
     while (1)
     {
-        char *local_clip = XPaste();
-        if (local_clip == NULL)
+        struct clip_data local_clip = XPasteType(XA_STRING2);
+        if (local_clip.data == NULL)
         {
-            sleep(10);
+            sleep(1);
             continue;
         }
         
-        printf("%s", local_clip);
-        printf("%d", (int) strnlen(local_clip, CLIP_LEN));
-        if (shared_clip != NULL && strncmp(shared_clip, local_clip, CLIP_LEN) == 0)
+        printf("%s", local_clip.data);
+        char send_buf[local_clip.size+8];
+        char head[HEAD_LEN];
+        memset(head, 0, local_clip.size + 8);
+        head[4] = (char)(local_clip.size >> 24 & 0xff);
+        head[5] = (char)(local_clip.size >> 16 & 0xff);
+        head[6] = (char)(local_clip.size >> 8 & 0xff);
+        head[7] = (char)(local_clip.size >>0&0xff);
+        memcpy(send_buf + 4, head,4);
+        memcpy(send_buf + 8, local_clip.data, local_clip.size);
+        if (shared_clip != NULL && memcmp(shared_clip, local_clip.data, local_clip.size) == 0)
         {
             sleep(1);   
             continue;
         }
-        shared_clip = local_clip;
-        int cnt = write(client_sock, local_clip, strnlen(local_clip, CLIP_LEN) + 1);
+        if (shared_clip != NULL && *shared_clip != 0)
+        {
+            free(shared_clip);
+        }
+        shared_clip = local_clip.data;
+        int cnt = write(client_sock, send_buf, local_clip.size+8);
         if (cnt < 0)
         {    
             printf("errno:%d, error:%s", errno, strerror(errno));
@@ -210,6 +269,7 @@ int main(int argc, char const *argv[])
     targets_atom = XInternAtom(display, "TARGETS", 0);
     text_atom = XInternAtom(display, "TEXT", 0);
     UTF8 = XInternAtom(display, "UTF8_STRING", 1);
+    PNG = XInternAtom(display, "image/png", 0);
     selection = XInternAtom(display, "CLIPBOARD", 0);
 
     display2 = XOpenDisplay(0);
