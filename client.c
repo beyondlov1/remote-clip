@@ -163,6 +163,7 @@ void *listen_remote(void *argv){
    while (1)
    {
        unsigned char head[HEAD_LEN];
+       memset(head, 0, HEAD_LEN);
        int head_rec_count;
        int rest = HEAD_LEN;
        while (rest > 0 && (head_rec_count = read(client_sock, head, rest)) > 0)
