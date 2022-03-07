@@ -119,9 +119,11 @@ static void XCopy(Atom selection, unsigned char *text, int size)
             int R = 0;
             ev.type = SelectionNotify, ev.display = xsr->display, ev.requestor = xsr->requestor,
             ev.selection = xsr->selection, ev.time = xsr->time, ev.target = xsr->target, ev.property = xsr->property;
-            if (ev.target == targets_atom)
+            if (ev.target == targets_atom){
+                Atom possible_targets[3] = {UTF8,XA_STRING, PNG};
                 R = XChangeProperty(ev.display, ev.requestor, ev.property, XA_ATOM, 32,
-                                    PropModeReplace, (unsigned char *)&UTF8, 1);
+                                    PropModeReplace, (unsigned char *)possible_targets, 3);
+            }
             else if (ev.target == XA_STRING || ev.target == text_atom)
                 R = XChangeProperty(ev.display, ev.requestor, ev.property, XA_STRING, 8, PropModeReplace, shared_clip, strlen(shared_clip));
             else if (ev.target == UTF8)
@@ -170,6 +172,12 @@ void *listen_remote(void *argv){
        {
            rest -= head_rec_count;
        }
+       if (head_rec_count<0)
+       {
+           printf("errno:%d, error:%s", errno, strerror(errno));
+           break;
+       }
+       
        unsigned long data_size = 0;
        for (size_t i = 0; i < HEAD_LEN; i++)
        {
@@ -220,7 +228,7 @@ void *listen_local_clip(void *argv){
         printf("%s", local_clip.data);
         char send_buf[local_clip.size+8];
         char head[HEAD_LEN];
-        memset(head, 0, local_clip.size + 8);
+        memset(head, 0, 8);
         head[4] = (char)(local_clip.size >> 24 & 0xff);
         head[5] = (char)(local_clip.size >> 16 & 0xff);
         head[6] = (char)(local_clip.size >> 8 & 0xff);
