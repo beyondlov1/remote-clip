@@ -192,13 +192,13 @@ void *listen_remote(void *argv){
                printf("socket closed\n");
                break;
            }
-           if (offset >= data_size-1)
+           memcpy(shared_clip+offset, buff, rec_count);
+           offset += rec_count;
+           if (offset >= data_size - 1)
            {
                printf("trans over\n");
                break;
            }
-           memcpy(shared_clip+offset, buff, rec_count);
-           offset += rec_count;
        }
        
        shared_size = offset;
