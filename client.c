@@ -166,7 +166,7 @@ void *listen_remote(void *argv){
    {
        unsigned char head[HEAD_LEN];
        memset(head, 0, HEAD_LEN);
-       int head_rec_count;
+       int head_rec_count = -1;
        int rest = HEAD_LEN;
        while (rest > 0 && (head_rec_count = read(client_sock, head, rest)) > 0)
        {
@@ -177,6 +177,12 @@ void *listen_remote(void *argv){
            printf("errno:%d, error:%s", errno, strerror(errno));
            break;
        }
+       if (head_rec_count == 0)
+       {
+           printf("socket closed");
+           break;
+       }
+       
        
        unsigned long data_size = 0;
        for (size_t i = 0; i < HEAD_LEN; i++)
