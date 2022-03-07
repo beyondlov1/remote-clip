@@ -224,7 +224,11 @@ void *listen_remote(void *argv){
 void *listen_local_clip(void *argv){
     while (1)
     {
-        struct clip_data local_clip = XPasteType(XA_STRING2);
+        struct clip_data local_clip = XPasteType(PNG);
+        if (local_clip.data == NULL)
+        {
+            local_clip = XPasteType(XA_STRING2);
+        }
         if (local_clip.data == NULL)
         {
             sleep(1);
