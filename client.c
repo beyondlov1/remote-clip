@@ -224,7 +224,7 @@ void *listen_local_clip(void *argv){
         head[5] = (char)(local_clip.size >> 16 & 0xff);
         head[6] = (char)(local_clip.size >> 8 & 0xff);
         head[7] = (char)(local_clip.size >>0&0xff);
-        memcpy(send_buf + 4, head,4);
+        memcpy(send_buf, head,8);
         memcpy(send_buf + 8, local_clip.data, local_clip.size);
         if (shared_clip != NULL && memcmp(shared_clip, local_clip.data, local_clip.size) == 0)
         {
