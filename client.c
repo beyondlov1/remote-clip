@@ -189,7 +189,10 @@ void *listen_remote(void *argv){
        {
            data_size = data_size << 8 | (unsigned long) head[i];
        }
-
+       if (shared_clip != NULL && *shared_clip != 0)
+       {
+          free(shared_clip);    
+       }
        shared_clip = malloc(data_size);
        memset(shared_clip, 0, data_size);
        int offset = 0;

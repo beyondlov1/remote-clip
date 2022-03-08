@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <sys/prctl.h>
 #include <pthread.h>
+#include <errno.h>
 
 #define MAX_REV_LEN 1000
 
@@ -81,7 +82,16 @@ void *handle_connection(void *argv){
         {
             if (last != node)
             {
-                write(last->sock, buff, rec_count);
+                int wroted = write(last->sock, buff, rec_count);
+                if (wroted < 0)
+                {
+                    printf("errno:%d, error:%s", errno, strerror(errno));
+                    struct snode *tmp = last->next;
+                    sremove(last);
+                    last = tmp;
+                    continue;
+                }
+                
                 printf("broadcast to %d\n", last->sock);
             }
             last = last->next;
