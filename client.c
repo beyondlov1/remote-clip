@@ -227,7 +227,7 @@ void *listen_local_clip(void *argv){
         struct clip_data local_clip = XPasteType(PNG);
         if (local_clip.data == NULL)
         {
-            local_clip = XPasteType(XA_STRING2);
+            local_clip = XPasteType(UTF82);
         }
         if (local_clip.data == NULL)
         {
