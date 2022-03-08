@@ -251,6 +251,7 @@ void *listen_local_clip(void *argv){
         if (shared_clip != NULL && memcmp(shared_clip, local_clip.data, local_clip.size) == 0)
         {
             sleep(1);   
+            free(local_clip.data);
             continue;
         }
         if (shared_clip != NULL && *shared_clip != 0)
